@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+    <head>
+        <title>Save Picture</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="js/web3.js" type="text/javascript"></script>
+        <script>
+            //連接區塊鏈
+            var Web3 = require('web3');
+            var web3 = new Web3();
+            web3.setProvider(new web3.providers.HttpProvider("http://localhost:8545"));
+            //連接區塊鏈
+
+            // 合約資訊
+            var contractABI = [{"constant": true, "inputs": [], "name": "imgbase64string_", "outputs": [{"name": "", "type": "string"}], "payable": false, "stateMutability": "view", "type": "function"}, {"inputs": [{"name": "s", "type": "string"}], "payable": false, "stateMutability": "nonpayable", "type": "constructor"}];
+            var contractByteCode = '0x6060604052341561000f57600080fd5b604051610291380380610291833981016040528080518201919050508060009080519060200190610041929190610048565b50506100ed565b828054600181600116156101000203166002900490600052602060002090601f016020900481019282601f1061008957805160ff19168380011785556100b7565b828001600101855582156100b7579182015b828111156100b657825182559160200191906001019061009b565b5b5090506100c491906100c8565b5090565b6100ea91905b808211156100e65760008160009055506001016100ce565b5090565b90565b610195806100fc6000396000f30060606040526000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff1680634513854a1461003d57600080fd5b341561004857600080fd5b6100506100cb565b6040518080602001828103825283818151815260200191508051906020019080838360005b83811015610090578082015181840152602081019050610075565b50505050905090810190601f1680156100bd5780820380516001836020036101000a031916815260200191505b509250505060405180910390f35b60008054600181600116156101000203166002900480601f0160208091040260200160405190810160405280929190818152602001828054600181600116156101000203166002900480156101615780601f1061013657610100808354040283529160200191610161565b820191906000526020600020905b81548152906001019060200180831161014457829003601f168201915b5050505050815600a165627a7a723058201ce585395e807725f22eeb130723a71d7cc0f522f4fe84b694d539bc500688650029';
+            //
+
+            //變數區
+            var img_base64 = "";
+            var account = "";
+            var myAccountPwd = "123";
+            var contractAddress = "";
+            var transactionHash = "";
+            //
+
+            window.onload = function () {
+                var blocknumber=web3.eth.blockNumber;
+                document.getElementById("show_bloclnumber").innerHTML = blocknumber;
+                
+                account = web3.eth.accounts[0];
+                var balance = web3.eth.getBalance(web3.eth.accounts[0]);
+                document.getElementById("account").innerHTML = account;
+                document.getElementById("balance").innerHTML = balance / (Math.pow(10, 18));
+
+                account2 = "0x458d8e2a19f084f1ece29081bc78f0b4f38c6737";
+                var balance2 = web3.eth.getBalance(account2);
+                document.getElementById("account2").innerHTML = account2;
+                document.getElementById("balance2").innerHTML = balance2 / (Math.pow(10, 18));
+            };
+
+            function UploadImg(img) {
+                if (img.files && img.files[0]) {
+                    var FR = new FileReader();
+                    FR.onload = function (e) {//非同步讀取檔案
+                        //var img_element = document.getElementById("show_img_result");
+                        //img_element.setAttribute("src", e.target.result);顯示上傳圖片
+                        img_base64 = e.target.result;
+                        DeployContract(img_base64, "img");
+                    };
+                    FR.readAsDataURL(img.files[0]);//讀取資料後結果以base64格式出現
+                }
+            }
+
+            function InputText() {
+                var inputtext = document.getElementById("test_input").value;
+                DeployContract(inputtext, "text");
+            }
+
+
+
+            function DeployContract(imgbase64string, stringtype) {
+                web3.personal.unlockAccount(account, myAccountPwd);//解鎖account
+                var imgbase64string = imgbase64string;
+                var s = imgbase64string;
+                var browser_saveimg_sol_saveimgContract = web3.eth.contract(contractABI);
+                var browser_saveimg_sol_saveimg = browser_saveimg_sol_saveimgContract.new(
+                        s,
+                        {
+                            from: account,
+                            data: contractByteCode,
+                            gas: '4700000'
+                        }, function (e, contract) {
+                    console.log(e, contract);
+                    if (typeof contract.address !== 'undefined') {
+                        //console.log("Contract Address：" + contract.address);
+                        //console.log("Transaction Address：" + contract.transactionHash);
+                        contractAddress = contract.address;
+                        transactionHash = contract.transactionHash;
+                        if (stringtype == "text") {
+                            document.getElementById("text_contract_address").innerHTML = contractAddress;
+                            document.getElementById("text_Transaction_address").innerHTML = contract.transactionHash;
+                            SetImgString(stringtype);
+                        } else if (stringtype == "img") {
+                            document.getElementById("contract_address").innerHTML = contractAddress;
+                            document.getElementById("Transaction_address").innerHTML = contract.transactionHash;
+                            SetImgString(stringtype);
+                        }
+                    }
+                })
+            }
+
+            function SetImgString(stringtype) {
+                if (contractABI != "") {
+                    var myContract = web3.eth.contract(contractABI);
+                    var myContractInstance = myContract.at(contractAddress);
+                    var result = myContractInstance.imgbase64string_.call();
+                    console.log(result);
+                    if (stringtype == "text") {
+                        document.getElementById("show_result").innerHTML = result;
+                    } else if (stringtype == "img") {
+                        var img_element = document.getElementById("show_img_result");
+                        img_element.setAttribute("src", result);//顯示base64來源圖片
+                    }
+
+
+                }
+            }
+
+            function GetTransacation() {
+                var blockNumber = web3.eth.blockNumber;
+                for (var i = 0; i < blockNumber; i++) {
+                    var info = web3.eth.getBlock(i);
+                    if (info.transactions[0] != null) {
+                        var transaction = web3.eth.getTransaction(info.transactions[0]);
+                        var transactionInput = transaction.input;
+                        var decodeTransctionInput = web3.toAscii(transactionInput);
+                        var splitTransactionArray = decodeTransctionInput.split(" ");
+                        ShowAllTransactionData(splitTransactionArray);
+                    }
+                }
+            }
+
+            function showThisTransactionData() {
+                document.getElementById("show_this_result").innerHTML = "";
+                var inputImgString = document.getElementById("this_hash").value;
+                var transaction = web3.eth.getTransaction(inputImgString);
+                var transactionInput = transaction.input;
+                var decodeTransctionInput = web3.toAscii(transactionInput);
+                var splitTransactionArray = decodeTransctionInput.split(" ");
+
+                var a = splitTransactionArray.length - 19;
+                for (var i = 1; i < a; i++) {
+                    var resultCheck = splitTransactionArray[19 + i].split("þ");
+                    console.log(resultCheck.length);
+                    if (resultCheck.length > 1) {
+                        var createImg = document.createElement("Img");
+                        createImg.src = resultCheck[1];
+                        var resultDiv = document.getElementById("show_this_result")
+                        resultDiv.appendChild(createImg);
+                    } else {
+                        document.getElementById("show_this_result").innerHTML = splitTransactionArray[19 + i];
+                    }
+                    console.log(resultCheck[1]);
+                }
+
+            }
+
+
+            function ShowAllTransactionData(splitTransactionArray) {
+                document.getElementById("show_transaction_hash").innerHTML = " ";
+                var a = splitTransactionArray.length - 19;
+                for (var i = 1; i < a; i++) {
+                    document.getElementById("show_transaction_hash").innerHTML += splitTransactionArray[19 + i];
+                    console.log(splitTransactionArray[19 + i]);
+                }
+                document.getElementById("show_transaction_hash").innerHTML += "<br>";
+
+            }
+
+        </script>
+    </head>
+    <body>
+        <h3>Chain Info</h3>
+        <label>Block Number：</label>&nbsp;<label id="show_bloclnumber"></label>
+        <hr>
+        <h3>Account</h3>
+        <h3>node1</h3>
+        <label>Address：</label><label id="account"></label><br>
+        <label>Balance：</label><label id="balance"></label>&nbsp;<label>ETH</label>
+        <br>
+        <h3>node2</h3>
+        <label>Address：</label><label id="account2"></label><br>
+        <label>Balance：</label><label id="balance2"></label>&nbsp;<label>ETH</label><br>
+        <hr>
+        <!--
+        <h1>Transaction</h1>
+        <label>From：</label><input type="text"><br>
+        <label>To：</label><input type="text"><br>
+        <button>Send</button>
+        <hr>
+        -->
+
+        <input type="text" id="test_input">
+        <button onclick="InputText()">Test</button><br>
+        <label>Contract Address：</label>&nbsp;<label id="text_contract_address"></label><br>
+        <label>Transaction Address：</label>&nbsp;<label id="text_Transaction_address"></label><br>
+        <label>Result：</label>&nbsp;<label id="show_result"></label>
+        <hr>
+
+        <input type="file" accept="image/*" id="img_upload" onchange="UploadImg(this)"><br>
+        <label>Contract Address：</label>&nbsp;<label id="contract_address"></label><br>
+        <label>Transaction Address：</label>&nbsp;<label id="Transaction_address"></label><br>
+        <img id="show_img_result">
+        <hr>        
+
+        <input type="text" id="this_hash">
+        <button onclick="showThisTransactionData()">show</button><br>
+        <label>Result：</label>&nbsp;<div id="show_this_result"></div>
+        <hr>
+
+        <button onclick="GetTransacation()">Get All Transaction Hash</button><br>
+        <label>All Transaction Data：</label>&nbsp;<div id="show_transaction_hash"></div>
+    </body>
+</html>
